@@ -35,11 +35,33 @@ async function run() {
   try {
     app.post("/savecart", async (req, res) => {
       await client.connect();
-      const { user, items } = req.body;
+      const data = req.body;
       const database = client.db("carts");
       const cart = database.collection("allcarts");
-      const allitems = cart.find({});
-      const result = await cart.res.send(result);
+      const query = { id: data.id };
+      const options = { upsert: true };
+      const updateDoc = { $set: data };
+      const result = await cart.updateOne(query, updateDoc, options);
+      console.log(result);
+    });
+  } finally {
+    await client.close();
+  }
+  /* Get Single Cart */
+  try {
+    app.get("/getcart/:id", async (req, res) => {
+      await client.connect();
+      console.log("hi");
+      const id = req.params.id;
+      const database = client.db("carts");
+      const cart = database.collection("allcarts");
+      const query = { id: id };
+      const result = await cart.findOne(query);
+      if (result) {
+        res.send(result);
+      } else {
+        res.send(false);
+      }
     });
   } finally {
     await client.close();
