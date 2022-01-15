@@ -42,7 +42,7 @@ async function run() {
       const options = { upsert: true };
       const updateDoc = { $set: data };
       const result = await cart.updateOne(query, updateDoc, options);
-      console.log(result);
+      res.send(result);
     });
   } finally {
     await client.close();
@@ -51,7 +51,6 @@ async function run() {
   try {
     app.get("/getcart/:id", async (req, res) => {
       await client.connect();
-      console.log("hi");
       const id = req.params.id;
       const database = client.db("carts");
       const cart = database.collection("allcarts");
