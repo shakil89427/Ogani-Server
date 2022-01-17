@@ -2,6 +2,8 @@ const express = require("express");
 const app = express();
 require("dotenv").config();
 const cors = require("cors");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 const { MongoClient } = require("mongodb");
 const ObjectId = require("mongodb").ObjectId;
 const port = process.env.PORT || 5000;
@@ -54,7 +56,7 @@ async function run() {
       const id = req.params.id;
       const database = client.db("carts");
       const cart = database.collection("allcarts");
-      const query = { id: id };
+      const query = { _id: id };
       const result = await cart.findOne(query);
       if (result) {
         res.send(result);
@@ -65,6 +67,37 @@ async function run() {
   } finally {
     await client.close();
   }
+
+  /* Signup */
+  app.post("/signup", async (req, res) => {
+    try {
+      await client.connect();
+      let user = req.body;
+      const database = client.db("users");
+      const users = database.collection("allusers");
+      const exist = await users.findOne({ email: user.email });
+      if (exist) {
+        return res.sendStatus(403);
+      }
+      const encryptedPassword = await bcrypt.hash(user.password, 10);
+      user.password = encryptedPassword;
+      const { password2, ...rest } = user;
+      const result = await users.insertOne(rest);
+      if (result.acknowledged) {
+        const { password, ...rest } = await users.findOne({
+          email: user.email,
+        });
+        const token = jwt.sign(rest, process.env.SECRET_KEY, {
+          expiresIn: "1hr",
+        });
+        res.status(200).send(token);
+      }
+    } catch (error) {
+      res.send({ message: error.message });
+    } finally {
+      await client.close();
+    }
+  });
 }
 run().catch(console.dir);
 
