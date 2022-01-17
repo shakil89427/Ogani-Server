@@ -98,6 +98,37 @@ async function run() {
       await client.close();
     }
   });
+
+  /* Login */
+  app.post("/login", async (req, res) => {
+    try {
+      await client.connect();
+      const database = client.db("users");
+      const users = database.collection("allusers");
+      const user = await users.findOne({ email: req.body.email });
+      if (user) {
+        const validPassword = await bcrypt.compare(
+          req.body.password,
+          user.password
+        );
+        if (validPassword) {
+          const { password, ...rest } = user;
+          const token = jwt.sign(rest, process.env.SECRET_KEY, {
+            expiresIn: "1hr",
+          });
+          res.status(200).send(token);
+        } else {
+          res.sendStatus(401);
+        }
+      } else {
+        res.sendStatus(401);
+      }
+    } catch (error) {
+      res.send({ message: error.message });
+    } finally {
+      await client.close();
+    }
+  });
 }
 run().catch(console.dir);
 
