@@ -45,15 +45,17 @@ async function run() {
     app.post("/cartproducts", async (req, res) => {
       await client.connect();
       const data = req.body;
+      const database = client.db("products");
+      const products = database.collection("allproducts");
       const query = { _id: { $in: [] } };
       for (const item of data) {
         query._id.$in.push(ObjectId(item.productId));
       }
-      const database = client.db("products");
-      const products = database.collection("allproducts");
-      const allitems = products.find(query);
-      const count = await allitems.count();
-      console.log(count);
+      const options = { projection: { _id: 1, name: 1, img: 1, price: 1 } };
+
+      const allitems = products.find(query, options);
+      const result = await allitems.toArray();
+      res.send(result);
     });
   } finally {
     await client.close();
