@@ -24,7 +24,6 @@ async function run() {
     app.post("/allproducts", async (req, res) => {
       await client.connect();
       let { page, ...rest } = req.body;
-      console.log(page);
       if (page < 0 || !page) {
         page = 0;
       }
@@ -37,6 +36,24 @@ async function run() {
         .limit(8)
         .toArray();
       res.send({ count, result });
+    });
+  } finally {
+    await client.close();
+  }
+  /* Load Cart Products */
+  try {
+    app.post("/cartproducts", async (req, res) => {
+      await client.connect();
+      const data = req.body;
+      const query = { _id: { $in: [] } };
+      for (const item of data) {
+        query._id.$in.push(ObjectId(item.productId));
+      }
+      const database = client.db("products");
+      const products = database.collection("allproducts");
+      const allitems = products.find(query);
+      const count = await allitems.count();
+      console.log(count);
     });
   } finally {
     await client.close();
