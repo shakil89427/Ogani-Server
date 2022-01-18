@@ -21,13 +21,22 @@ const client = new MongoClient(uri, {
 async function run() {
   /* Load All Products */
   try {
-    app.get("/allproducts", async (req, res) => {
+    app.post("/allproducts", async (req, res) => {
       await client.connect();
+      let { page, ...rest } = req.body;
+      console.log(page);
+      if (page < 0 || !page) {
+        page = 0;
+      }
       const database = client.db("products");
       const products = database.collection("allproducts");
-      const allitems = products.find({});
-      const result = await allitems.toArray();
-      res.send(result);
+      const allitems = products.find(rest);
+      const count = await allitems.count();
+      const result = await allitems
+        .skip(page * 8)
+        .limit(8)
+        .toArray();
+      res.send({ count, result });
     });
   } finally {
     await client.close();
