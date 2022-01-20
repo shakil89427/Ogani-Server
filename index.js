@@ -56,7 +56,10 @@ async function run() {
       const database = client.db("products");
       const products = database.collection("allproducts");
       const result = await products.findOne({ _id: ObjectId(id) });
-      const related = products.find({ catagory: result.catagory });
+      const related = products.find({
+        _id: { $ne: ObjectId(id) },
+        catagory: result.catagory,
+      });
       const result2 = await related.limit(4).toArray();
       res.send({ result, result2 });
     });
