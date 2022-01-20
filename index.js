@@ -23,19 +23,26 @@ async function run() {
   try {
     app.post("/allproducts", async (req, res) => {
       await client.connect();
-      let { page, ...rest } = req.body;
+      const database = client.db("products");
+      const products = database.collection("allproducts");
+      let { page, ...rest } = req.body.filterBy;
       if (page < 0 || !page) {
         page = 0;
       }
-      const database = client.db("products");
-      const products = database.collection("allproducts");
       const allitems = products.find(rest);
       const count = await allitems.count();
       const result = await allitems
         .skip(page * 8)
         .limit(8)
         .toArray();
-      res.send({ count, result });
+      if (req.body.featured === 0) {
+        const featuredItem = products.find({});
+        const count2 = await featuredItem.count();
+        const result2 = await featuredItem.skip(count2 - 8).toArray();
+        res.send({ count, result, result2 });
+      } else {
+        res.send({ count, result });
+      }
     });
   } finally {
     await client.close();
@@ -49,7 +56,7 @@ async function run() {
       const products = database.collection("allproducts");
       const query = { _id: { $in: [] } };
       for (const item of data) {
-        query._id.$in.push(ObjectId(item.productId));
+        query._id.$in.push(ObjectId(item._id));
       }
       const options = { projection: { _id: 1, name: 1, img: 1, price: 1 } };
 
