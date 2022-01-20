@@ -47,6 +47,23 @@ async function run() {
   } finally {
     await client.close();
   }
+
+  /* Load product details and related products */
+  try {
+    app.get("/productdetails/:id", async (req, res) => {
+      await client.connect();
+      const id = req.params.id;
+      const database = client.db("products");
+      const products = database.collection("allproducts");
+      const result = await products.findOne({ _id: ObjectId(id) });
+      const related = products.find({ catagory: result.catagory });
+      const result2 = await related.limit(4).toArray();
+      res.send({ result, result2 });
+    });
+  } finally {
+    await client.close();
+  }
+
   /* Load Cart Products */
   try {
     app.post("/cartproducts", async (req, res) => {
