@@ -258,6 +258,8 @@ async function run() {
   try {
     app.post("/checkresettoken", guard, async (req, res) => {
       await client.connect();
+      const database = client.db("users");
+      const users = database.collection("allusers");
       const result = await users.findOne({ email: req.userinfo.email });
       if (result.email) {
         res.sendStatus(200);
