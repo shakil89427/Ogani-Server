@@ -21,6 +21,18 @@ const client = new MongoClient(uri, {
   useUnifiedTopology: true,
 });
 
+/* Auth Guard */
+const guard = (req, res, next) => {
+  const { token } = req.body;
+  try {
+    const decoded = jwt.verify(token, process.env.SECRET_KEY);
+    req.userinfo = decoded;
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
+
 async function run() {
   /* Load All Products */
   try {
@@ -180,6 +192,100 @@ async function run() {
         }
       } else {
         res.sendStatus(401);
+      }
+    });
+  } catch (error) {
+    res.send({ message: error.message });
+  } finally {
+    await client.close();
+  }
+
+  /* Reset Password */
+
+  try {
+    app.get("/resetpassword/:id", async (req, res) => {
+      await client.connect();
+      let user = req.params.id;
+      const database = client.db("users");
+      const users = database.collection("allusers");
+      const exist = await users.findOne({ email: user });
+      if (exist) {
+        const { password, ...rest } = exist;
+        const token = jwt.sign(rest, process.env.SECRET_KEY, {
+          expiresIn: "1hr",
+        });
+        /* Email Top */
+        const oAuth2Client = new google.auth.OAuth2(
+          process.env.CLIENT_ID,
+          process.env.CLIENT_SECRET,
+          process.env.REDIRECT_URI
+        );
+        oAuth2Client.setCredentials({
+          refresh_token: process.env.REFRESH_TOKEN,
+        });
+        const accessToken = await oAuth2Client.getAccessToken();
+        const transport = nodemailer.createTransport({
+          service: "gmail",
+          auth: {
+            type: "OAuth2",
+            user: "shopogani@gmail.com",
+            clientId: process.env.CLIENT_ID,
+            clientSecret: process.env.CLIENT_SECRET,
+            refreshToken: process.env.REFRESH_TOKEN,
+            accessToken: accessToken,
+          },
+        });
+        const response = await transport.sendMail({
+          from: "OganiShop",
+          to: user,
+          subject: "Reset Password ✔",
+          text: `Click the link  to reset your Password.Link is valid for 1 hr. http://localhost:5000/reset/${token}`,
+        });
+        if (response) {
+          res.send(response);
+        }
+        /* Email Bottom */
+      } else {
+        res.sendStatus(404);
+      }
+    });
+  } catch (error) {
+    res.send({ message: error.message });
+  } finally {
+    await client.close();
+  }
+  /* Protected Route */
+  try {
+    app.post("/checkresettoken", guard, async (req, res) => {
+      await client.connect();
+      const result = await users.findOne({ email: req.userinfo.email });
+      if (result.email) {
+        res.sendStatus(200);
+      }
+    });
+  } catch (error) {
+    res.send({ message: error.message });
+  } finally {
+    await client.close();
+  }
+
+  /* Confirm Password Reset*/
+
+  try {
+    app.post("/confirmreset", guard, async (req, res) => {
+      await client.connect();
+      const result = await users.findOne({ email: req.userinfo.email });
+      if (result.email) {
+        const encryptedpassword = await bcrypt.hash(
+          req.body.userData.password,
+          10
+        );
+        const updated = { $set: { password: encryptedpassword } };
+        const findby = { email: result.email };
+        const update = await users.updateOne(findby, updated);
+        if (update.modifiedCount) {
+          res.sendStatus(200);
+        }
       }
     });
   } catch (error) {
