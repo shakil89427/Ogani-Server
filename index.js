@@ -205,7 +205,7 @@ async function run() {
         service: "gmail",
         auth: {
           type: "OAuth2",
-          user: "shakilahmed89427@gmail.com",
+          user: "shopogani@gmail.com",
           clientId: process.env.CLIENT_ID,
           clientSecret: process.env.CLIENT_SECRET,
           refreshToken: process.env.REFRESH_TOKEN,
@@ -214,7 +214,7 @@ async function run() {
       });
       const response = await transport.sendMail({
         from: data.email,
-        to: "shakilahmed89428@gmail.com",
+        to: "shopogani@gmail.com",
         subject: data.name,
         text: data.message,
       });
