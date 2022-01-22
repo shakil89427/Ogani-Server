@@ -244,15 +244,17 @@ async function run() {
           const database = client.db("tokens");
           const tokens = database.collection("alltokens");
           await tokens.insertOne({ email: user, token });
-          res.send(response);
+          res.sendStatus(200);
+        } else {
+          res.send(false);
         }
         /* Email Bottom */
       } else {
-        res.sendStatus(404);
+        res.send(false);
       }
     });
   } catch (error) {
-    res.send({ message: error.message });
+    res.send(false);
   } finally {
     await client.close();
   }
@@ -267,11 +269,11 @@ async function run() {
       if (result) {
         res.sendStatus(200);
       } else {
-        res.sendStatus(401);
+        res.send(false);
       }
     });
   } catch (error) {
-    res.send({ message: error.message });
+    res.send(false);
   } finally {
     await client.close();
   }
@@ -292,13 +294,17 @@ async function run() {
         const findby = { email: result.email };
         const update = await users.updateOne(findby, updated);
         await tokens.deleteMany({ email: result.email });
-        if (update.modifiedCount) {
+        if (update?.modifiedCount) {
           res.sendStatus(200);
+        } else {
+          res.send(false);
         }
+      } else {
+        res.send(false);
       }
     });
   } catch (error) {
-    res.send({ message: error.message });
+    res.send(false);
   } finally {
     await client.close();
   }
@@ -333,10 +339,10 @@ async function run() {
         subject: data.name,
         text: data.message,
       });
-      res.send(response);
+      res.sendStatus(200);
     });
   } catch (error) {
-    res.send({ message: error.message });
+    res.send(false);
   }
 }
 run().catch(console.dir);
