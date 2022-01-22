@@ -205,7 +205,7 @@ async function run() {
   try {
     app.get("/resetpassword/:id", async (req, res) => {
       await client.connect();
-      let user = req.params.id;
+      const user = req.params.id;
       const database = client.db("users");
       const users = database.collection("allusers");
       const exist = await users.findOne({ email: user });
@@ -241,6 +241,9 @@ async function run() {
           text: `Click the link  to reset your Password.Link is valid for 1 hr. http://localhost:3000/reset/${token}`,
         });
         if (response) {
+          const database = client.db("tokens");
+          const tokens = database.collection("alltokens");
+          const result = await tokens.insertOne({ email: user, token });
           res.send(response);
         }
         /* Email Bottom */
@@ -256,18 +259,16 @@ async function run() {
   /* Protected Route */
   try {
     app.post("/checkresettoken", guard, async (req, res) => {
-      await client.connect();
-      const database = client.db("users");
-      const users = database.collection("allusers");
-      const result = await users.findOne({ email: req.userinfo.email });
-      if (result.email) {
+      const token = req.body;
+      const tokensDb = client.db("tokens");
+      const tokens = tokensDb.collection("alltokens");
+      const result = await tokens.findOne({ email: req.userinfo.email, token });
+      if (result.token === token) {
         res.sendStatus(200);
       }
     });
   } catch (error) {
     res.send({ message: error.message });
-  } finally {
-    await client.close();
   }
 
   /* Confirm Password Reset*/
@@ -275,12 +276,17 @@ async function run() {
   try {
     app.post("/confirmreset", guard, async (req, res) => {
       await client.connect();
+      const usersDb = client.db("users");
+      const users = usersDb.collection("allusers");
+      const tokensDb = client.db("tokens");
+      const tokens = tokensDb.collection("alltokens");
       const result = await users.findOne({ email: req.userinfo.email });
       if (result.email) {
         const encryptedpassword = await bcrypt.hash(req.body.pass, 10);
         const updated = { $set: { password: encryptedpassword } };
         const findby = { email: result.email };
         const update = await users.updateOne(findby, updated);
+        const delateToken = await tokens.deleteMany({ email: result.email });
         if (update.modifiedCount) {
           res.sendStatus(200);
         }
