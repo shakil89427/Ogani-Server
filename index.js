@@ -238,7 +238,7 @@ async function run() {
           from: "OganiShop",
           to: user,
           subject: "Reset Password ✔",
-          text: `Click the link  to reset your Password.Link is valid for 1 hr. http://localhost:3000/reset/${token}`,
+          text: `Click the link  to reset your Password.Link is valid for 1 hr. https://oganishop.netlify.app/reset/${token}`,
         });
         if (response) {
           const database = client.db("tokens");
