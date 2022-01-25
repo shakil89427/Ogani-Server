@@ -23,10 +23,11 @@ const client = new MongoClient(uri, {
 
 /* Auth Guard */
 const guard = (req, res, next) => {
-  const { token } = req.body;
+  const token = req.headers.authorization.split(" ")[1];
   try {
     const decoded = jwt.verify(token, process.env.SECRET_KEY);
     req.userinfo = decoded;
+    req.token = token;
     next();
   } catch (error) {
     res.send(false);
@@ -246,10 +247,10 @@ async function run() {
   });
   /* Protected Route */
 
-  app.post("/checkresettoken", guard, async (req, res) => {
+  app.get("/checkresettoken", guard, async (req, res) => {
     try {
       await client.connect();
-      const token = req.body.token;
+      const token = req.token;
       const tokensDb = client.db("tokens");
       const tokens = tokensDb.collection("alltokens");
       const result = await tokens.findOne({ email: req.userinfo.email, token });
