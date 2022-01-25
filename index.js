@@ -29,14 +29,15 @@ const guard = (req, res, next) => {
     req.userinfo = decoded;
     next();
   } catch (error) {
-    next(error);
+    res.send(false);
   }
 };
 
 async function run() {
   /* Load All Products */
-  try {
-    app.post("/allproducts", async (req, res) => {
+
+  app.post("/allproducts", async (req, res) => {
+    try {
       await client.connect();
       const database = client.db("products");
       const products = database.collection("allproducts");
@@ -58,14 +59,13 @@ async function run() {
       } else {
         res.send({ count, result });
       }
-    });
-  } finally {
-    await client.close();
-  }
+    } catch (error) {}
+  });
 
   /* Load product details and related products */
-  try {
-    app.get("/productdetails/:id", async (req, res) => {
+
+  app.get("/productdetails/:id", async (req, res) => {
+    try {
       await client.connect();
       const id = req.params.id;
       const database = client.db("products");
@@ -77,14 +77,13 @@ async function run() {
       });
       const result2 = await related.limit(4).toArray();
       res.send({ result, result2 });
-    });
-  } finally {
-    await client.close();
-  }
+    } catch (error) {}
+  });
 
   /* Load Cart Products */
-  try {
-    app.post("/cartproducts", async (req, res) => {
+
+  app.post("/cartproducts", async (req, res) => {
+    try {
       await client.connect();
       const data = req.body;
       const database = client.db("products");
@@ -98,14 +97,13 @@ async function run() {
       const allitems = products.find(query, options);
       const result = await allitems.toArray();
       res.send(result);
-    });
-  } finally {
-    await client.close();
-  }
+    } catch (error) {}
+  });
 
   /* Save the Cart */
-  try {
-    app.post("/savecart", async (req, res) => {
+
+  app.post("/savecart", async (req, res) => {
+    try {
       await client.connect();
       const data = req.body;
       const database = client.db("carts");
@@ -115,13 +113,13 @@ async function run() {
       const updateDoc = { $set: data };
       const result = await cart.updateOne(query, updateDoc, options);
       res.send(result);
-    });
-  } finally {
-    await client.close();
-  }
+    } catch (error) {}
+  });
+
   /* Get Single Cart */
-  try {
-    app.get("/getcart/:id", async (req, res) => {
+
+  app.get("/getcart/:id", async (req, res) => {
+    try {
       await client.connect();
       const id = req.params.id;
       const database = client.db("carts");
@@ -133,50 +131,43 @@ async function run() {
       } else {
         res.send(false);
       }
-    });
-  } finally {
-    await client.close();
-  }
+    } catch (error) {}
+  });
 
   /* Signup */
-  try {
-    app.post("/signup", async (req, res) => {
+
+  app.post("/signup", async (req, res) => {
+    try {
       await client.connect();
       let user = req.body;
       const database = client.db("users");
       const users = database.collection("allusers");
       const exist = await users.findOne({ email: user.email });
-      if (exist) {
-        return res.sendStatus(403);
+      if (exist?.email) {
+        res.send(false);
+      } else {
+        const encryptedPassword = await bcrypt.hash(user.password, 10);
+        user.password = encryptedPassword;
+        const { password2, ...rest } = user;
+        const inserted = await users.insertOne(rest);
+        if (inserted?.acknowledged) {
+          const token = jwt.sign(rest, process.env.SECRET_KEY, {
+            expiresIn: "1hr",
+          });
+          res.send(token);
+        }
       }
-      const encryptedPassword = await bcrypt.hash(user.password, 10);
-      user.password = encryptedPassword;
-      const { password2, ...rest } = user;
-      const result = await users.insertOne(rest);
-      if (result.acknowledged) {
-        const { password, ...rest } = await users.findOne({
-          email: user.email,
-        });
-        const token = jwt.sign(rest, process.env.SECRET_KEY, {
-          expiresIn: "1hr",
-        });
-        res.status(200).send(token);
-      }
-    });
-  } catch (error) {
-    res.send({ message: error.message });
-  } finally {
-    await client.close();
-  }
+    } catch (error) {}
+  });
 
   /* Login */
-  try {
-    app.post("/login", async (req, res) => {
+  app.post("/login", async (req, res) => {
+    try {
       await client.connect();
       const database = client.db("users");
       const users = database.collection("allusers");
       const user = await users.findOne({ email: req.body.email });
-      if (user) {
+      if (user?.email) {
         const validPassword = await bcrypt.compare(
           req.body.password,
           user.password
@@ -186,33 +177,32 @@ async function run() {
           const token = jwt.sign(rest, process.env.SECRET_KEY, {
             expiresIn: "1hr",
           });
-          res.status(200).send(token);
+          res.send(token);
         } else {
-          res.sendStatus(401);
+          res.send(false);
         }
       } else {
-        res.sendStatus(401);
+        res.send(false);
       }
-    });
-  } catch (error) {
-    res.send({ message: error.message });
-  } finally {
-    await client.close();
-  }
+    } catch (error) {}
+  });
 
   /* Reset Password */
-
-  try {
-    app.get("/resetpassword/:id", async (req, res) => {
+  app.get("/resetpassword/:id", async (req, res) => {
+    try {
       await client.connect();
       const user = req.params.id;
       const database = client.db("users");
       const users = database.collection("allusers");
       const exist = await users.findOne({ email: user });
-      if (exist) {
-        const token = jwt.sign({ email: user }, process.env.SECRET_KEY, {
-          expiresIn: "1hr",
-        });
+      if (exist?.email) {
+        const token = jwt.sign(
+          { email: exist?.email },
+          process.env.SECRET_KEY,
+          {
+            expiresIn: "1hr",
+          }
+        );
         /* Email Top */
         const oAuth2Client = new google.auth.OAuth2(
           process.env.CLIENT_ID,
@@ -240,7 +230,7 @@ async function run() {
           subject: "Reset Password ✔",
           text: `Click the link  to reset your Password.Link is valid for 1 hr. https://oganishop.netlify.app/reset/${token}`,
         });
-        if (response) {
+        if (response?.messageId) {
           const database = client.db("tokens");
           const tokens = database.collection("alltokens");
           await tokens.insertOne({ email: user, token });
@@ -252,36 +242,28 @@ async function run() {
       } else {
         res.send(false);
       }
-    });
-  } catch (error) {
-    res.send(false);
-  } finally {
-    await client.close();
-  }
+    } catch (error) {}
+  });
   /* Protected Route */
-  try {
-    app.post("/checkresettoken", guard, async (req, res) => {
+
+  app.post("/checkresettoken", guard, async (req, res) => {
+    try {
       await client.connect();
       const token = req.body.token;
       const tokensDb = client.db("tokens");
       const tokens = tokensDb.collection("alltokens");
       const result = await tokens.findOne({ email: req.userinfo.email, token });
-      if (result) {
+      if (result?.token) {
         res.sendStatus(200);
       } else {
         res.send(false);
       }
-    });
-  } catch (error) {
-    res.send(false);
-  } finally {
-    await client.close();
-  }
+    } catch (error) {}
+  });
 
   /* Confirm Password Reset*/
-
-  try {
-    app.post("/confirmreset", guard, async (req, res) => {
+  app.post("/confirmreset", guard, async (req, res) => {
+    try {
       await client.connect();
       const usersDb = client.db("users");
       const users = usersDb.collection("allusers");
@@ -302,16 +284,13 @@ async function run() {
       } else {
         res.send(false);
       }
-    });
-  } catch (error) {
-    res.send(false);
-  } finally {
-    await client.close();
-  }
+    } catch (error) {}
+  });
 
   /* Send Email for contact use */
-  try {
-    app.post("/sendemail", async (req, res) => {
+
+  app.post("/sendemail", async (req, res) => {
+    try {
       const data = req.body;
       const oAuth2Client = new google.auth.OAuth2(
         process.env.CLIENT_ID,
@@ -339,11 +318,13 @@ async function run() {
         subject: data.name,
         text: data.message,
       });
-      res.sendStatus(200);
-    });
-  } catch (error) {
-    res.send(false);
-  }
+      if (response?.messageId) {
+        res.sendStatus(200);
+      } else {
+        res.send(false);
+      }
+    } catch (error) {}
+  });
 }
 run().catch(console.dir);
 
