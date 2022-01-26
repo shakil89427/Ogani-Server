@@ -149,13 +149,18 @@ async function run() {
       } else {
         const encryptedPassword = await bcrypt.hash(user.password, 10);
         user.password = encryptedPassword;
-        const { password2, ...rest } = user;
         const inserted = await users.insertOne(rest);
         if (inserted?.acknowledged) {
-          const token = jwt.sign(rest, process.env.SECRET_KEY, {
-            expiresIn: "1hr",
-          });
-          res.send(token);
+          const token = jwt.sign(
+            { email: user.email },
+            process.env.SECRET_KEY,
+            {
+              expiresIn: "1hr",
+            }
+          );
+          res.send({ token });
+        } else {
+          res.send(false);
         }
       }
     } catch (error) {}
@@ -174,14 +179,34 @@ async function run() {
           user.password
         );
         if (validPassword) {
-          const { password, ...rest } = user;
-          const token = jwt.sign(rest, process.env.SECRET_KEY, {
-            expiresIn: "1hr",
-          });
-          res.send(token);
+          const token = jwt.sign(
+            { email: req.body.email },
+            process.env.SECRET_KEY,
+            {
+              expiresIn: "1hr",
+            }
+          );
+          res.send({ token });
         } else {
           res.send(false);
         }
+      } else {
+        res.send(false);
+      }
+    } catch (error) {}
+  });
+
+  /* Get user by token */
+  app.get("/getuser", guard, async (req, res) => {
+    try {
+      await client.connect();
+      const email = req.userinfo.email;
+      const database = client.db("users");
+      const cart = database.collection("allusers");
+      const result = await cart.findOne({ email });
+      if (result) {
+        const { password, ...rest } = result;
+        res.send(rest);
       } else {
         res.send(false);
       }
