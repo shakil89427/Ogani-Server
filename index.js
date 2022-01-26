@@ -60,7 +60,9 @@ async function run() {
       } else {
         res.send({ count, result });
       }
-    } catch (error) {}
+    } catch (error) {
+      res.send(false);
+    }
   });
 
   /* Load product details and related products */
@@ -78,7 +80,9 @@ async function run() {
       });
       const result2 = await related.limit(4).toArray();
       res.send({ result, result2 });
-    } catch (error) {}
+    } catch (error) {
+      res.send(false);
+    }
   });
 
   /* Load Cart Products */
@@ -98,7 +102,9 @@ async function run() {
       const allitems = products.find(query, options);
       const result = await allitems.toArray();
       res.send(result);
-    } catch (error) {}
+    } catch (error) {
+      res.send(false);
+    }
   });
 
   /* Save the Cart */
@@ -114,7 +120,9 @@ async function run() {
       const updateDoc = { $set: data };
       const result = await cart.updateOne(query, updateDoc, options);
       res.send(result);
-    } catch (error) {}
+    } catch (error) {
+      res.send(false);
+    }
   });
 
   /* Get Single Cart */
@@ -132,7 +140,9 @@ async function run() {
       } else {
         res.send(false);
       }
-    } catch (error) {}
+    } catch (error) {
+      res.send(false);
+    }
   });
 
   /* Signup */
@@ -149,6 +159,7 @@ async function run() {
       } else {
         const encryptedPassword = await bcrypt.hash(user.password, 10);
         user.password = encryptedPassword;
+        const { password2, ...rest } = user;
         const inserted = await users.insertOne(rest);
         if (inserted?.acknowledged) {
           const token = jwt.sign(
@@ -163,7 +174,9 @@ async function run() {
           res.send(false);
         }
       }
-    } catch (error) {}
+    } catch (error) {
+      res.send(false);
+    }
   });
 
   /* Login */
@@ -193,7 +206,9 @@ async function run() {
       } else {
         res.send(false);
       }
-    } catch (error) {}
+    } catch (error) {
+      res.send(false);
+    }
   });
 
   /* Get user by token */
@@ -213,7 +228,9 @@ async function run() {
       } else {
         res.send(false);
       }
-    } catch (error) {}
+    } catch (error) {
+      res.send(false);
+    }
   });
 
   /* Reset Password */
@@ -271,7 +288,9 @@ async function run() {
       } else {
         res.send(false);
       }
-    } catch (error) {}
+    } catch (error) {
+      res.send(false);
+    }
   });
   /* Protected Route */
 
@@ -287,7 +306,9 @@ async function run() {
       } else {
         res.send(false);
       }
-    } catch (error) {}
+    } catch (error) {
+      res.send(false);
+    }
   });
 
   /* Confirm Password Reset*/
@@ -313,7 +334,9 @@ async function run() {
       } else {
         res.send(false);
       }
-    } catch (error) {}
+    } catch (error) {
+      res.send(false);
+    }
   });
 
   /* Send Email for contact use */
@@ -352,7 +375,9 @@ async function run() {
       } else {
         res.send(false);
       }
-    } catch (error) {}
+    } catch (error) {
+      res.send(false);
+    }
   });
 }
 run().catch(console.dir);
