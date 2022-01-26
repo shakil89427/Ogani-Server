@@ -155,7 +155,7 @@ async function run() {
             { email: user.email },
             process.env.SECRET_KEY,
             {
-              expiresIn: "1hr",
+              expiresIn: "900s",
             }
           );
           res.send({ token });
@@ -183,7 +183,7 @@ async function run() {
             { email: req.body.email },
             process.env.SECRET_KEY,
             {
-              expiresIn: "1hr",
+              expiresIn: "900s",
             }
           );
           res.send({ token });
@@ -206,7 +206,10 @@ async function run() {
       const result = await cart.findOne({ email });
       if (result) {
         const { password, ...rest } = result;
-        res.send(rest);
+        const token = jwt.sign({ email }, process.env.SECRET_KEY, {
+          expiresIn: "900s",
+        });
+        res.send({ token, rest });
       } else {
         res.send(false);
       }
@@ -226,7 +229,7 @@ async function run() {
           { email: exist?.email },
           process.env.SECRET_KEY,
           {
-            expiresIn: "1hr",
+            expiresIn: "900s",
           }
         );
         /* Email Top */
@@ -254,7 +257,7 @@ async function run() {
           from: "OganiShop",
           to: user,
           subject: "Reset Password ✔",
-          text: `Click the link  to reset your Password.Link is valid for 1 hr. https://oganishop.netlify.app/reset/${token}`,
+          text: `Click the link  to reset your Password.Link is valid for 15 minuites. https://oganishop.netlify.app/reset/${token}`,
         });
         if (response?.messageId) {
           const database = client.db("tokens");
