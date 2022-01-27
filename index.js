@@ -12,7 +12,7 @@ const { gmail } = require("googleapis/build/src/apis/gmail");
 const cookieParser = require("cookie-parser");
 const res = require("express/lib/response");
 const port = process.env.PORT || 5000;
-app.use(cors({ credentials: true, origin: "http://localhost:3000" }));
+app.use(cors({ credentials: true, origin: "https://oganishop.netlify.app" }));
 app.use(cookieParser());
 app.use(express.json());
 /* Mongodb login */
