@@ -10,6 +10,7 @@ const { MongoClient } = require("mongodb");
 const ObjectId = require("mongodb").ObjectId;
 const { gmail } = require("googleapis/build/src/apis/gmail");
 const cookieParser = require("cookie-parser");
+const res = require("express/lib/response");
 const port = process.env.PORT || 5000;
 app.use(cors({ credentials: true, origin: "http://localhost:3000" }));
 app.use(cookieParser());
@@ -232,7 +233,6 @@ async function run() {
   app.get("/checkuser", checkCookie, async (req, res) => {
     try {
       await client.connect();
-      console.log("hi");
       const email = req.email;
       const database = client.db("users");
       const users = database.collection("allusers");
@@ -252,15 +252,19 @@ async function run() {
       res.send(false);
     }
   });
+  /* Logout User */
+  app.get("/logout", (req, res) => {
+    res.clearCookie("accesstoken").send(true);
+  });
 
   /* Get user by token */
-  app.post("/updateuser", async (req, res) => {
+  app.post("/updateuser", checkCookie, async (req, res) => {
     try {
       await client.connect();
       const data = req.body;
       const database = client.db("users");
       const users = database.collection("allusers");
-      const filter = { email: data.email };
+      const filter = { email: req.email };
       const options = { upsert: true };
       const updateDoc = { $set: data };
       const result = await users.findOne(filter);
@@ -268,7 +272,12 @@ async function run() {
         const response = await users.updateOne(filter, updateDoc, options);
         const response2 = await users.findOne(filter);
         const { password, ...rest } = response2;
-        res.send(rest);
+        const token = jwt.sign({ email: req.email }, process.env.SECRET_KEY, {
+          expiresIn: "900s",
+        });
+        res
+          .cookie("accesstoken", token, { maxAge: 900000, httpOnly: true })
+          .send(rest);
       } else {
         res.send(false);
       }
