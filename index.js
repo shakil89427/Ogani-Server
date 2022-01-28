@@ -233,6 +233,63 @@ async function run() {
     }
   });
 
+  /* Update user */
+  app.post("/updateuser", async (req, res) => {
+    try {
+      await client.connect();
+      const { email, ...rest } = req.body;
+      const database = client.db("users");
+      const users = database.collection("allusers");
+      const filter = { email };
+      const options = { upsert: true };
+      const updateDoc = { $set: rest };
+      const result = await users.findOne(filter);
+      if (result.email) {
+        const response = await users.updateOne(filter, updateDoc, options);
+        const response2 = await users.findOne(filter);
+        const { password, ...rest } = response2;
+        res.send(rest);
+      } else {
+        res.send(false);
+      }
+    } catch (error) {
+      res.send(false);
+    }
+  });
+  /* Update Password */
+  app.post("/updatepass", async (req, res) => {
+    try {
+      await client.connect();
+      const data = req.body;
+      const database = client.db("users");
+      const users = database.collection("allusers");
+      const filter = { email: data.email };
+      const result = await users.findOne(filter);
+      if (result.email) {
+        const validPassword = await bcrypt.compare(
+          req.body.oldPassword,
+          result.password
+        );
+        if (validPassword) {
+          const encryptedpassword = await bcrypt.hash(data.newPassword, 10);
+          const updated = { $set: { password: encryptedpassword } };
+          const response = await users.updateOne(filter, updated);
+          if (response) {
+            res.send(true);
+          } else {
+            res.send(false);
+          }
+        } else {
+          res.send(false);
+        }
+      } else {
+        res.send(false);
+      }
+    } catch (error) {
+      res.send(false);
+    }
+  });
+
   /* Reset Password */
   app.get("/resetpassword/:id", async (req, res) => {
     try {
