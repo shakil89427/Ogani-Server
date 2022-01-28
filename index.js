@@ -145,6 +145,29 @@ async function run() {
     }
   });
 
+  /* Place Order */
+
+  app.post("/placeorder", async (req, res) => {
+    try {
+      await client.connect();
+      const data = req.body;
+      const cartDb = client.db("carts");
+      const carts = cartDb.collection("allcarts");
+      const orderDb = client.db("orders");
+      const orders = orderDb.collection("allorders");
+      const query = { _id: data.user._id };
+      const place = await orders.insertOne(data);
+      const remove = await carts.deleteOne(query);
+      if (remove.deletedCount === 1) {
+        res.send(true);
+      } else {
+        res.send(false);
+      }
+    } catch (error) {
+      res.send(false);
+    }
+  });
+
   /* Signup */
 
   app.post("/signup", async (req, res) => {
