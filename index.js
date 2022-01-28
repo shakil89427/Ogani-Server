@@ -168,6 +168,33 @@ async function run() {
     }
   });
 
+  /* Get Order */
+
+  app.get("/loadorders/:id", async (req, res) => {
+    try {
+      await client.connect();
+      const value = req.params.id;
+      const orderDb = client.db("orders");
+      const orders = orderDb.collection("allorders");
+      const find = orders.find({});
+      const response = await find.toArray();
+      if (value === "admin") {
+        res.send(response);
+      } else {
+        const data = [];
+        for (const order of response) {
+          if (order.user._id === value) {
+            data.push(order);
+          }
+        }
+        res.send(data);
+      }
+    } catch (error) {
+      console.log(error);
+      res.send(false);
+    }
+  });
+
   /* Signup */
 
   app.post("/signup", async (req, res) => {
