@@ -9,11 +9,8 @@ const { google } = require("googleapis");
 const { MongoClient } = require("mongodb");
 const ObjectId = require("mongodb").ObjectId;
 const { gmail } = require("googleapis/build/src/apis/gmail");
-const cookieParser = require("cookie-parser");
-const res = require("express/lib/response");
 const port = process.env.PORT || 5000;
-app.use(cors({ credentials: true, origin: true }));
-app.use(cookieParser());
+app.use(cors());
 app.use(express.json());
 /* Mongodb login */
 
@@ -32,21 +29,6 @@ const guard = (req, res, next) => {
     req.userinfo = decoded;
     req.token = token;
     next();
-  } catch (error) {
-    res.send(false);
-  }
-};
-
-const checkCookie = (req, res, next) => {
-  const token = req.cookies.accesstoken;
-  try {
-    const decoded = jwt.verify(token, process.env.SECRET_KEY);
-    if (decoded.email) {
-      req.email = decoded.email;
-      next();
-    } else {
-      res.send(false);
-    }
   } catch (error) {
     res.send(false);
   }
@@ -172,7 +154,7 @@ async function run() {
       const database = client.db("users");
       const users = database.collection("allusers");
       const exist = await users.findOne({ email: user.email });
-      if (exist?._id) {
+      if (exist?.email) {
         res.send(false);
       } else {
         const encryptedPassword = await bcrypt.hash(user.password, 10);
@@ -180,14 +162,14 @@ async function run() {
         const { password2, ...rest } = user;
         const inserted = await users.insertOne(rest);
         if (inserted?.acknowledged) {
-          const get = await users.findOne({ email: user.email });
-          const { password, ...rests } = get;
-          const token = jwt.sign({ email: get.email }, process.env.SECRET_KEY, {
-            expiresIn: "900s",
-          });
-          res
-            .cookie("accesstoken", token, { maxAge: 900000, httpOnly: true })
-            .send(rests);
+          const token = jwt.sign(
+            { email: user.email },
+            process.env.SECRET_KEY,
+            {
+              expiresIn: "900s",
+            }
+          );
+          res.send({ token });
         } else {
           res.send(false);
         }
@@ -204,9 +186,11 @@ async function run() {
       const database = client.db("users");
       const users = database.collection("allusers");
       const user = await users.findOne({ email: req.body.email });
-      const { password, ...rests } = user;
       if (user?.email) {
-        const validPassword = await bcrypt.compare(req.body.password, password);
+        const validPassword = await bcrypt.compare(
+          req.body.password,
+          user.password
+        );
         if (validPassword) {
           const token = jwt.sign(
             { email: req.body.email },
@@ -215,9 +199,7 @@ async function run() {
               expiresIn: "900s",
             }
           );
-          res
-            .cookie("accesstoken", token, { maxAge: 900000, httpOnly: true })
-            .send(rests);
+          res.send({ token });
         } else {
           res.send(false);
         }
@@ -230,54 +212,19 @@ async function run() {
   });
 
   /* Get user by token */
-  app.get("/checkuser", checkCookie, async (req, res) => {
+  app.get("/getuser", guard, async (req, res) => {
     try {
       await client.connect();
-      const email = req.email;
+      const email = req.userinfo.email;
       const database = client.db("users");
-      const users = database.collection("allusers");
-      const result = await users.findOne({ email });
+      const cart = database.collection("allusers");
+      const result = await cart.findOne({ email });
       if (result) {
         const { password, ...rest } = result;
         const token = jwt.sign({ email }, process.env.SECRET_KEY, {
           expiresIn: "900s",
         });
-        res
-          .cookie("accesstoken", token, { maxAge: 900000, httpOnly: true })
-          .send(rest);
-      } else {
-        res.send(false);
-      }
-    } catch (error) {
-      res.send(false);
-    }
-  });
-  /* Logout User */
-  app.get("/logout", (req, res) => {
-    res.clearCookie("accesstoken").send(true);
-  });
-
-  /* Get user by token */
-  app.post("/updateuser", checkCookie, async (req, res) => {
-    try {
-      await client.connect();
-      const data = req.body;
-      const database = client.db("users");
-      const users = database.collection("allusers");
-      const filter = { email: req.email };
-      const options = { upsert: true };
-      const updateDoc = { $set: data };
-      const result = await users.findOne(filter);
-      if (result.email) {
-        const response = await users.updateOne(filter, updateDoc, options);
-        const response2 = await users.findOne(filter);
-        const { password, ...rest } = response2;
-        const token = jwt.sign({ email: req.email }, process.env.SECRET_KEY, {
-          expiresIn: "900s",
-        });
-        res
-          .cookie("accesstoken", token, { maxAge: 900000, httpOnly: true })
-          .send(rest);
+        res.send({ token, rest });
       } else {
         res.send(false);
       }
