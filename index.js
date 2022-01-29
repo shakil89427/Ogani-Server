@@ -190,7 +190,41 @@ async function run() {
         res.send(data);
       }
     } catch (error) {
-      console.log(error);
+      res.send(false);
+    }
+  });
+
+  /* Cancel Order */
+
+  app.get("/cancelorder/:id", async (req, res) => {
+    try {
+      await client.connect();
+      const id = req.params.id;
+      const orderDb = client.db("orders");
+      const orders = orderDb.collection("allorders");
+      const updateDoc = { $set: { status: "cancelled" } };
+      const filter = { _id: ObjectId(id) };
+      const options = { upsert: true };
+      const result = await orders.updateOne(filter, updateDoc, options);
+      res.send(true);
+    } catch (error) {
+      res.send(false);
+    }
+  });
+
+  /* Complete Order */
+  app.get("/completeorder/:id", async (req, res) => {
+    try {
+      await client.connect();
+      const id = req.params.id;
+      const orderDb = client.db("orders");
+      const orders = orderDb.collection("allorders");
+      const updateDoc = { $set: { status: "completed" } };
+      const filter = { _id: ObjectId(id) };
+      const options = { upsert: true };
+      const result = await orders.updateOne(filter, updateDoc, options);
+      res.send(true);
+    } catch (error) {
       res.send(false);
     }
   });
